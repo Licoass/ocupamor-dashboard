@@ -45,7 +45,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const resetDataBtn = document.getElementById("reset-data-btn");
     
     const monthTabsContainer = document.getElementById("month-tabs-container");
-    const assetTreeContainer = document.getElementById("asset-tree-container");
     const specialistsListContainer = document.getElementById("specialists-list-container");
     
     // Canva Banner
@@ -161,9 +160,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const birthdayCancelBtn = document.getElementById("birthday-cancel-btn");
     const birthdaySaveBtn = document.getElementById("birthday-save-btn");
 
-    // Sidebar tab buttons
-    const sidebarTabBtns = document.querySelectorAll(".sidebar-tab-btn");
-    const sidebarPanels = document.querySelectorAll(".sidebar-panel");
+    // Sidebar DOM Elements
 
     // Toast
     const toast = document.getElementById("toast");
@@ -191,6 +188,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const specInstaInput = document.getElementById("spec-insta-input");
     const specFedInput = document.getElementById("spec-fed-input");
     const specDobInput = document.getElementById("spec-dob-input");
+    const specDriveInput = document.getElementById("spec-drive-input");
 
     const btnAddSpecialist = document.getElementById("btn-add-specialist");
     const specCancelBtn = document.getElementById("spec-cancel-btn");
@@ -223,11 +221,25 @@ document.addEventListener("DOMContentLoaded", () => {
         loadProgressState();
         loadSpecialistsDirectory();
         
+        // Migrate specialists to include default Drive links if missing
+        let migrated = false;
+        specialistsDirectory.forEach(spec => {
+            if (!spec.driveLink) {
+                const defaultLink = getDefaultDriveLink(spec.rawName);
+                if (defaultLink) {
+                    spec.driveLink = defaultLink;
+                    migrated = true;
+                }
+            }
+        });
+        if (migrated) {
+            saveSpecialistsDirectory();
+        }
+        
         buildMonthTabs();
         console.log("after buildMonthTabs. currentMonth is now:", currentMonth);
         buildAreaFilters();
         buildAreaModalDropdown();
-        buildAssetsTree();
         buildSpecialistsDirectory();
         
         updateActiveMonthView();
@@ -1468,103 +1480,40 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // ------------------------------------------
-    // ASSETS RESOURCE TREE BUILDER
-    // ------------------------------------------
-    function buildAssetsTree() {
-        assetTreeContainer.innerHTML = "";
-        
-        if (!assetsData || Object.keys(assetsData).length === 0) {
-            assetTreeContainer.innerHTML = "<p style='font-size: 12px; color: var(--gris-suave); font-style: italic;'>No hay recursos de activos cargados.</p>";
-            return;
-        }
-
-        Object.keys(assetsData).forEach(area => {
-            const areaNode = document.createElement("div");
-            areaNode.className = "tree-node-area";
-
-            const areaHeader = document.createElement("div");
-            areaHeader.className = "tree-area-header";
-            areaHeader.innerHTML = `
-                <span>📁 ${area}</span>
-                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="arrow" style="transition: transform 0.2s;"><polyline points="6 9 12 15 18 9"/></svg>
-            `;
-
-            const areaContent = document.createElement("div");
-            areaContent.className = "tree-area-content";
-
-            areaHeader.addEventListener("click", () => {
-                areaContent.classList.toggle("active");
-                areaHeader.querySelector(".arrow").style.transform = areaContent.classList.contains("active") ? "rotate(180deg)" : "";
-            });
-
-            const specialists = assetsData[area];
-            Object.keys(specialists).forEach(spec => {
-                const specNode = document.createElement("div");
-                specNode.className = "tree-node-specialist";
-
-                const specHeader = document.createElement("div");
-                specHeader.className = "tree-spec-header";
-                specHeader.textContent = `👤 ${spec}`;
-
-                const specContent = document.createElement("div");
-                specContent.className = "tree-spec-content";
-
-                specHeader.addEventListener("click", () => {
-                    specContent.classList.toggle("active");
-                });
-
-                const data = specialists[spec];
-                
-                // If it has direct files (_files)
-                if (data._files) {
-                    const ul = document.createElement("ul");
-                    ul.className = "tree-files-list";
-                    data._files.forEach(file => {
-                        const li = document.createElement("li");
-                        li.textContent = file;
-                        li.title = file;
-                        ul.appendChild(li);
-                    });
-                    specContent.appendChild(ul);
-                } else {
-                    // It has folders like EDITADAS, Video, etc.
-                    Object.keys(data).forEach(folder => {
-                        if (folder === "count") return;
-                        
-                        const categoryTitle = document.createElement("div");
-                        categoryTitle.className = "tree-category";
-                        categoryTitle.textContent = `${folder} (${data[folder].count || (data[folder].files ? data[folder].files.length : 0)})`;
-
-                        const ul = document.createElement("ul");
-                        ul.className = "tree-files-list";
-                        
-                        const files = data[folder].files || [];
-                        files.forEach(file => {
-                            const li = document.createElement("li");
-                            li.textContent = file;
-                            li.title = file;
-                            ul.appendChild(li);
-                        });
-
-                        specContent.appendChild(categoryTitle);
-                        specContent.appendChild(ul);
-                    });
-                }
-
-                specNode.appendChild(specHeader);
-                specNode.appendChild(specContent);
-                areaContent.appendChild(specNode);
-            });
-
-            areaNode.appendChild(areaHeader);
-            areaNode.appendChild(areaContent);
-assetTreeContainer.appendChild(areaNode);
-        });
-    }
-
-    // ------------------------------------------
     // BIRTHDAYS & SPECIALISTS DIRECTORY
     // ------------------------------------------
+    const defaultDriveLinks = {
+        "maria peña": "https://drive.google.com/drive/folders/1Osda4cb4V09bimO00D6dCPlKGopmdKwb?usp=drive_link",
+        "maria pena": "https://drive.google.com/drive/folders/1Osda4cb4V09bimO00D6dCPlKGopmdKwb?usp=drive_link",
+        "doriangelys": "https://drive.google.com/drive/folders/1_NtSPw5Dg7BTCB2607MwzPB1idq-xXMN?usp=drive_link",
+        "stephannie": "https://drive.google.com/drive/folders/1x7RHk_As_XdrJTjXrV3KRn22AjbhKVVt?usp=drive_link",
+        "yulibeth": "https://drive.google.com/drive/folders/1BN2dt_oVKIVA2wijNUz8xwwqW2WJIEjw?usp=drive_link",
+        "onaily": "https://drive.google.com/drive/folders/1ZNw7lWH_Dj07zto-urdhRPdxkHkGofwD?usp=drive_link",
+        "miguel": "https://drive.google.com/drive/folders/1BF8J3LH-wJuKS7hmHzgDlAx2HVw1iKNy?usp=drive_link",
+        "yaisibit": "https://drive.google.com/drive/folders/1Pc8RP_iWqK-Dj_gU6ItwrD6FqBEfaXse?usp=drive_link",
+        "aderling": "https://drive.google.com/drive/folders/1EAc3D1Dccm6F2bJw_3bq68T9hXFG-zZe?usp=drive_link",
+        "jhoana": "https://drive.google.com/drive/folders/1Bifhs3AOurANkc0oMltdD-7Hoxct4P7O?usp=drive_link",
+        "nelson": "https://drive.google.com/drive/folders/15AtRox9YUHxiDNI7pDg0INJq4ktaJU7P?usp=drive_link",
+        "siramad": "https://drive.google.com/drive/folders/1ZeQMzcXYRciITRizENKYVO1eoWmOz_hi?usp=drive_link",
+        "francia": "https://drive.google.com/drive/folders/1P9OoJlZPCQtRHUwfj1t50pWYhCtku3SM?usp=drive_link",
+        "merlin": "https://drive.google.com/drive/folders/1Yhh1r5yWfDpMn-EKq0buNDTi8Ko0Jw0U?usp=drive_link",
+        "yesenia": "https://drive.google.com/drive/folders/1zLK5zVrnGo0zyjzEoRV4vU1fkLqKluHE?usp=drive_link",
+        "betania": "https://drive.google.com/drive/folders/1vJD3_PcMJLt4S2FT9eob39NSs029x98L?usp=drive_link",
+        "elimar": "https://drive.google.com/drive/folders/1ZijRGBSkbJ_VEZBIE6J3wZyKOoK0tsI5?usp=drive_link",
+        "wilmary": "https://drive.google.com/drive/folders/1eaEFJbeG2wdq7vl1myhSwUt-lZK7APJW?usp=drive_link"
+    };
+
+    function getDefaultDriveLink(rawName) {
+        const clean = cleanSpecialistName(rawName);
+        const sortedKeys = Object.keys(defaultDriveLinks).sort((a, b) => b.length - a.length);
+        for (const key of sortedKeys) {
+            if (clean.includes(key)) {
+                return defaultDriveLinks[key];
+            }
+        }
+        return "";
+    }
+
     function loadSpecialistsDirectory() {
         const stored = localStorage.getItem("ocupamor_specialists_directory");
         if (stored) {
@@ -1615,6 +1564,9 @@ assetTreeContainer.appendChild(areaNode);
                             });
                         });
 
+                        // Find default Google Drive link
+                        const driveLinkVal = getDefaultDriveLink(cleanName);
+
                         specMap.set(mapKey, {
                             id: mapKey,
                             rawName: cleanName,
@@ -1623,6 +1575,7 @@ assetTreeContainer.appendChild(areaNode);
                             fed: fed,
                             birthdate: birthdayStr,
                             birthdateVal: birthdayVal,
+                            driveLink: driveLinkVal,
                             isDefault: true
                         });
                     }
@@ -1691,6 +1644,16 @@ assetTreeContainer.appendChild(areaNode);
                 `;
             }
 
+            let driveLinkHtml = "";
+            if (spec.driveLink) {
+                driveLinkHtml = `
+                    <a href="${spec.driveLink}" target="_blank" class="btn btn-secondary spec-drive-btn" style="width: 100%; margin-top: 10px; gap: 8px; justify-content: center; font-size: 11px; padding: 6px 12px; display: inline-flex; align-items: center; text-decoration: none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        Ver Recursos (Drive)
+                    </a>
+                `;
+            }
+
             card.innerHTML = `
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 4px;">
                     <div>
@@ -1727,6 +1690,8 @@ assetTreeContainer.appendChild(areaNode);
                 ` : ''}
 
                 ${activitiesHtml}
+                
+                ${driveLinkHtml}
             `;
 
             // Bind click handlers
@@ -1772,6 +1737,7 @@ assetTreeContainer.appendChild(areaNode);
                 specInstaInput.value = spec.instagram;
                 specFedInput.value = spec.fed;
                 specDobInput.value = spec.birthdateVal || "";
+                specDriveInput.value = spec.driveLink || "";
             }
         } else {
             specialistModalBadge.textContent = "Agregar Especialista";
@@ -1780,6 +1746,7 @@ assetTreeContainer.appendChild(areaNode);
             specInstaInput.value = "";
             specFedInput.value = "";
             specDobInput.value = "";
+            specDriveInput.value = "";
         }
         
         specialistModal.classList.add("active");
@@ -1796,6 +1763,7 @@ assetTreeContainer.appendChild(areaNode);
         const insta = specInstaInput.value.trim().replace(/^@/, "");
         const fed = specFedInput.value.trim();
         const dobVal = specDobInput.value;
+        const driveLinkVal = specDriveInput.value.trim();
 
         if (!name) {
             alert("Por favor ingresa el nombre completo del especialista.");
@@ -1822,6 +1790,7 @@ assetTreeContainer.appendChild(areaNode);
                 spec.fed = fed;
                 spec.birthdate = birthdayStr;
                 spec.birthdateVal = dobVal;
+                spec.driveLink = driveLinkVal;
             }
             showToast("Especialista actualizado.");
         } else {
@@ -1841,6 +1810,7 @@ assetTreeContainer.appendChild(areaNode);
                 fed: fed,
                 birthdate: birthdayStr,
                 birthdateVal: dobVal,
+                driveLink: driveLinkVal,
                 isDefault: false
             });
             showToast("Especialista agregado.");
@@ -2261,18 +2231,6 @@ assetTreeContainer.appendChild(areaNode);
         });
 
         resetDataBtn.addEventListener("click", resetData);
-
-        // Sidebar tabs toggling
-        sidebarTabBtns.forEach(btn => {
-            btn.addEventListener("click", () => {
-                sidebarTabBtns.forEach(b => b.classList.remove("active"));
-                sidebarPanels.forEach(p => p.classList.remove("active"));
-                
-                btn.classList.add("active");
-                const tabName = btn.getAttribute("data-sidebar-tab");
-                document.getElementById(`panel-${tabName}`).classList.add("active");
-            });
-        });
 
         // Filters listeners
         searchInput.addEventListener("input", (e) => {

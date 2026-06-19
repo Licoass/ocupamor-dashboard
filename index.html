@@ -42,41 +42,25 @@
         <div class="app-body">
             <!-- SIDEBAR -->
             <aside class="app-sidebar">
-                <!-- PANEL SELECTOR -->
-                <div class="sidebar-tabs">
-                    <button class="sidebar-tab-btn active" data-sidebar-tab="assets">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                        Recursos
-                    </button>
-                    <button class="sidebar-tab-btn" data-sidebar-tab="specialists">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
-                        Especialistas
-                    </button>
+                <!-- SIDEBAR HEADER (SIMPLE STATIC HEADER) -->
+                <div style="padding: 16px 20px; border-bottom: 1px solid var(--gris-borde); display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <h3 style="margin-bottom:0; font-size:16px;">Directorio Clínico</h3>
+                        <button class="btn btn-primary btn-sm" id="btn-add-specialist" style="padding: 4px 8px; font-size: 11px;">
+                            + Agregar
+                        </button>
+                    </div>
+                    <a href="https://drive.google.com/drive/folders/12J6PWjxRoOCIc9rPc-aq_RXgOY9or-lP?usp=drive_link" target="_blank" class="btn btn-secondary" style="width: 100%; font-size: 11px; padding: 8px; gap: 6px; display: inline-flex; justify-content: center; align-items: center; text-decoration: none; border-color: var(--morado-desarrollo); color: var(--morado-desarrollo); background-color: rgba(106, 44, 255, 0.03); font-weight: 600;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        Carpeta General de Recursos
+                    </a>
                 </div>
 
                 <!-- SIDEBAR CONTENTS -->
-                <div class="sidebar-content">
-                    <!-- Tab: Assets -->
-                    <div class="sidebar-panel active" id="panel-assets">
-                        <h3>Organización de Recursos</h3>
-                        <p class="panel-desc">Fotos y videos en la carpeta <code>ACTIVOS</code> por profesional:</p>
-                        <div class="asset-tree" id="asset-tree-container">
-                            <!-- Populated by JS -->
-                        </div>
-                    </div>
-
-                    <!-- Tab: Specialists -->
-                    <div class="sidebar-panel" id="panel-specialists">
-                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                            <h3 style="margin-bottom:0;">Directorio Clínico</h3>
-                            <button class="btn btn-primary btn-sm" id="btn-add-specialist" style="padding: 4px 8px; font-size: 11px;">
-                                + Agregar
-                            </button>
-                        </div>
-                        <p class="panel-desc">Profesionales de Ocupamor con sus cumpleaños y participaciones:</p>
-                        <div class="specialists-list" id="specialists-list-container">
-                            <!-- Populated by JS -->
-                        </div>
+                <div class="sidebar-content" style="padding: 16px 20px;">
+                    <p class="panel-desc" style="margin-bottom: 14px;">Profesionales de Ocupamor con sus cumpleaños, recursos y participaciones:</p>
+                    <div class="specialists-list" id="specialists-list-container">
+                        <!-- Populated by JS -->
                     </div>
                 </div>
             </aside>
@@ -542,9 +526,13 @@
                     <label for="spec-fed-input" style="font-size:12px; font-weight:600; display:block; margin-bottom: 4px;">Federación / Matrícula:</label>
                     <input type="text" id="spec-fed-input" class="form-input" placeholder="Ej: MPPS: 12345">
                 </div>
-                <div style="margin-bottom: 16px;">
+                <div style="margin-bottom: 12px;">
                     <label for="spec-dob-input" style="font-size:12px; font-weight:600; display:block; margin-bottom: 4px;">Fecha de Cumpleaños:</label>
                     <input type="date" id="spec-dob-input" class="form-input">
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label for="spec-drive-input" style="font-size:12px; font-weight:600; display:block; margin-bottom: 4px;">Enlace a Carpeta de Google Drive:</label>
+                    <input type="text" id="spec-drive-input" class="form-input" placeholder="https://drive.google.com/...">
                 </div>
                 <div class="modal-footer" style="margin-top: 0; padding-top: 16px; border-top: none; justify-content: flex-end; gap: 8px;">
                     <button class="btn btn-secondary" id="spec-cancel-btn">Cancelar</button>

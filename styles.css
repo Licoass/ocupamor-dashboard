@@ -1660,3 +1660,17 @@ h1, h2, h3, h4, h5, h6 {
     text-align: center;
     line-height: 1.5;
 }
+
+/* Google Drive Button on Specialist Card */
+.spec-drive-btn {
+    border-color: var(--verde-salud) !important;
+    color: #0F766E !important;
+    background-color: rgba(30, 219, 143, 0.04) !important;
+    font-weight: 600;
+}
+
+.spec-drive-btn:hover {
+    background-color: rgba(30, 219, 143, 0.1) !important;
+    border-color: var(--verde-salud) !important;
+    box-shadow: 0 2px 6px rgba(30, 219, 143, 0.15);
+}

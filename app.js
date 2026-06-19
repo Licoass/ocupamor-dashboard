@@ -177,6 +177,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Collapsible Sidebar & Specialist Manager Elements
     let specialistsDirectory = [];
     let activeSpecId = null;
+    let expandedRoleGroups = {}; // Keep track of open accordions in sidebar
 
     const sidebarToggleBtn = document.getElementById("sidebar-toggle-btn");
     const appBody = document.querySelector(".app-body");
@@ -189,6 +190,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const specFedInput = document.getElementById("spec-fed-input");
     const specDobInput = document.getElementById("spec-dob-input");
     const specDriveInput = document.getElementById("spec-drive-input");
+    const specPhotoInput = document.getElementById("spec-photo-input");
+    const specPhotoPreview = document.getElementById("spec-photo-preview");
+    const specPhotoPlaceholder = document.getElementById("spec-photo-placeholder");
+    const btnRemovePhoto = document.getElementById("btn-remove-photo");
+    let modalActivePhotoBase64 = null; // Hold Base64 photo in modal state
 
     const btnAddSpecialist = document.getElementById("btn-add-specialist");
     const specCancelBtn = document.getElementById("spec-cancel-btn");
@@ -1514,6 +1520,72 @@ document.addEventListener("DOMContentLoaded", () => {
         return "";
     }
 
+    // Role Group mapping for accordion categorization
+    const roleGroupOrder = [
+        "Terapia Ocupacional",
+        "Psicología",
+        "Nutrición",
+        "Fisioterapia",
+        "Psicopedagogía",
+        "Terapia de Lenguaje",
+        "Club de Actividades",
+        "Especialista"
+    ];
+
+    function getRoleGroup(role) {
+        if (!role) return "Especialista";
+        const r = role.toLowerCase();
+        if (r.includes("ocupacional") || r.includes("to")) return "Terapia Ocupacional";
+        if (r.includes("psicolog") || r.includes("ps")) return "Psicología";
+        if (r.includes("nutric") || r.includes("nt")) return "Nutrición";
+        if (r.includes("fisio") || r.includes("ft")) return "Fisioterapia";
+        if (r.includes("psicope") || r.includes("pp")) return "Psicopedagogía";
+        if (r.includes("lenguaje") || r.includes("tl") || r.includes("habla")) return "Terapia de Lenguaje";
+        if (r.includes("club") || r.includes("tarea") || r.includes("juego")) return "Club de Actividades";
+        return "Especialista";
+    }
+
+    function getRoleColorClass(role) {
+        if (!role) return "club";
+        const r = role.toLowerCase();
+        if (r.includes("ocupacional") || r.includes("to")) return "to";
+        if (r.includes("psicolog") || r.includes("ps")) return "ps";
+        if (r.includes("nutric") || r.includes("nt")) return "nt";
+        if (r.includes("fisio") || r.includes("ft")) return "ft";
+        if (r.includes("psicope") || r.includes("pp")) return "pp";
+        if (r.includes("lenguaje") || r.includes("tl")) return "tl";
+        return "club";
+    }
+
+    // Compress client-side profile picture utilizing canvas center crop
+    function compressProfileImage(file, callback) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const img = new Image();
+            img.onload = function() {
+                const canvas = document.createElement("canvas");
+                const max_size = 128;
+                let width = img.width;
+                let height = img.height;
+                
+                const size = Math.min(width, height);
+                const sourceX = (width - size) / 2;
+                const sourceY = (height - size) / 2;
+                
+                canvas.width = max_size;
+                canvas.height = max_size;
+                
+                const ctx = canvas.getContext("2d");
+                ctx.drawImage(img, sourceX, sourceY, size, size, 0, 0, max_size, max_size);
+                
+                const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+                callback(dataUrl);
+            };
+            img.src = e.target.result;
+        };
+        reader.readAsDataURL(file);
+    }
+
     function loadSpecialistsDirectory() {
         const stored = localStorage.getItem("ocupamor_specialists_directory");
         if (stored) {
@@ -1600,133 +1672,198 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        // Sort alphabetically
-        const sorted = [...specialistsDirectory].sort((a, b) => a.rawName.localeCompare(b.rawName));
+        // Group specialists by their role group
+        const groups = {};
+        roleGroupOrder.forEach(g => {
+            groups[g] = [];
+        });
 
-        sorted.forEach(spec => {
-            const card = document.createElement("div");
-            card.className = "specialist-card";
+        specialistsDirectory.forEach(spec => {
+            const groupName = getRoleGroup(spec.role);
+            groups[groupName].push(spec);
+        });
+
+        // Render accordions for groups that have specialists
+        roleGroupOrder.forEach(groupName => {
+            const specs = groups[groupName];
+            if (specs.length === 0) return;
+
+            // Sort alphabetically inside group
+            specs.sort((a, b) => a.rawName.localeCompare(b.rawName));
+
+            const accordionGroup = document.createElement("div");
+            accordionGroup.className = "spec-accordion-group";
             
-            let birthdayHtml = "";
-            if (spec.birthdateVal) {
-                birthdayHtml = `
-                    <div class="spec-birthday-row">
-                        <span>🎂 Cumpleaños: <strong>${spec.birthdate || spec.birthdateVal}</strong></span>
-                    </div>
-                `;
-            } else {
-                birthdayHtml = `
-                    <div class="spec-birthday-row">
-                        <span class="warning-badge" data-id="${spec.id}">
-                            ⚠️ Agregar cumpleaños
-                        </span>
-                    </div>
-                `;
+            const isOpen = expandedRoleGroups[groupName] || false;
+            if (isOpen) {
+                accordionGroup.classList.add("open");
             }
 
-            // Find activities history
-            const activities = findSpecialistActivities(spec.rawName);
-
-            // Build activities history HTML
-            let activitiesHtml = "";
-            if (activities.length > 0) {
-                activitiesHtml = `
-                    <div class="spec-activities-title">Participación (${activities.length})</div>
-                    <ul class="spec-activities-list">
-                        ${activities.slice(0, 3).map(act => `
-                            <li title="${act.title}">
-                                <span class="spec-activity-dot"></span>
-                                <span>${act.title} (${act.month})</span>
-                            </li>
-                        `).join("")}
-                        ${activities.length > 3 ? `<li style='color:var(--gris-suave); font-style:italic;'>+ ${activities.length - 3} más...</li>` : ''}
-                    </ul>
-                `;
-            }
-
-            let driveLinkHtml = "";
-            if (spec.driveLink) {
-                driveLinkHtml = `
-                    <a href="${spec.driveLink}" target="_blank" class="btn btn-secondary spec-drive-btn" style="width: 100%; margin-top: 10px; gap: 8px; justify-content: center; font-size: 11px; padding: 6px 12px; display: inline-flex; align-items: center; text-decoration: none;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
-                        Ver Recursos (Drive)
-                    </a>
-                `;
-            }
-
-            card.innerHTML = `
-                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 4px;">
-                    <div>
-                        <div class="spec-name">${spec.rawName}</div>
-                        <div class="spec-role">${spec.role}</div>
-                    </div>
-                    <div style="display:flex; gap: 4px;">
-                        <button class="btn btn-secondary btn-icon spec-card-edit-btn" data-id="${spec.id}" title="Editar Ficha" style="padding: 4px; border-radius: 4px; border:none; background:transparent;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                        </button>
-                        <button class="btn btn-secondary btn-icon spec-card-delete-btn" data-id="${spec.id}" title="Eliminar Especialista" style="padding: 4px; border-radius: 4px; border:none; background:transparent; color:#EF4444;">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                        </button>
-                    </div>
-                </div>
-                ${birthdayHtml}
-                
-                ${spec.instagram ? `
-                    <div class="spec-info-row">
-                        <span>IG: <strong>@${spec.instagram}</strong></span>
-                        <button class="spec-copy-btn" data-copy="@${spec.instagram}" title="Copiar Instagram">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                        </button>
-                    </div>
-                ` : ''}
-
-                ${spec.fed ? `
-                    <div class="spec-info-row">
-                        <span>Matrícula: <strong>${spec.fed}</strong></span>
-                        <button class="spec-copy-btn" data-copy="${spec.fed}" title="Copiar Matrícula">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                        </button>
-                    </div>
-                ` : ''}
-
-                ${activitiesHtml}
-                
-                ${driveLinkHtml}
+            const header = document.createElement("button");
+            header.className = "spec-accordion-header";
+            header.innerHTML = `
+                <span>${groupName} (${specs.length})</span>
+                <span class="spec-accordion-icon">▼</span>
             `;
+            header.addEventListener("click", () => {
+                const open = accordionGroup.classList.toggle("open");
+                expandedRoleGroups[groupName] = open;
+            });
 
-            // Bind click handlers
-            const warningBadge = card.querySelector(".warning-badge");
-            if (warningBadge) {
-                warningBadge.addEventListener("click", () => {
+            const content = document.createElement("div");
+            content.className = "spec-accordion-content";
+
+            specs.forEach(spec => {
+                const card = document.createElement("div");
+                card.className = "specialist-card";
+                
+                let birthdayHtml = "";
+                if (spec.birthdateVal) {
+                    birthdayHtml = `
+                        <div class="spec-birthday-row">
+                            <span>🎂 Cumpleaños: <strong>${spec.birthdate || spec.birthdateVal}</strong></span>
+                        </div>
+                    `;
+                } else {
+                    birthdayHtml = `
+                        <div class="spec-birthday-row">
+                            <span class="warning-badge" data-id="${spec.id}">
+                                ⚠️ Agregar cumpleaños
+                            </span>
+                        </div>
+                    `;
+                }
+
+                // Find activities history
+                const activities = findSpecialistActivities(spec.rawName);
+
+                // Build activities history HTML
+                let activitiesHtml = "";
+                if (activities.length > 0) {
+                    activitiesHtml = `
+                        <div class="spec-activities-title">Participación (${activities.length})</div>
+                        <ul class="spec-activities-list">
+                            ${activities.slice(0, 3).map(act => `
+                                <li title="${act.title}">
+                                    <span class="spec-activity-dot"></span>
+                                    <span>${act.title} (${act.month})</span>
+                                </li>
+                            `).join("")}
+                            ${activities.length > 3 ? `<li style='color:var(--gris-suave); font-style:italic;'>+ ${activities.length - 3} más...</li>` : ''}
+                        </ul>
+                    `;
+                }
+
+                let driveLinkHtml = "";
+                if (spec.driveLink) {
+                    driveLinkHtml = `
+                        <a href="${spec.driveLink}" target="_blank" class="btn btn-secondary spec-drive-btn" style="width: 100%; margin-top: 10px; gap: 8px; justify-content: center; font-size: 11px; padding: 6px 12px; display: inline-flex; align-items: center; text-decoration: none;">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                            Ver Recursos (Drive)
+                        </a>
+                    `;
+                }
+
+                // Initials fallback
+                const parts = spec.rawName.trim().split(" ");
+                let initials = "";
+                if (parts.length > 0) {
+                    initials += parts[0][0] || "";
+                    if (parts.length > 1 && !parts[1].toLowerCase().includes("lcda") && !parts[1].toLowerCase().includes("ltd")) {
+                        initials += parts[1][0] || "";
+                    } else if (parts.length > 2) {
+                        initials += parts[2][0] || "";
+                    }
+                }
+                initials = initials.toUpperCase();
+                const roleClass = getRoleColorClass(spec.role);
+
+                card.innerHTML = `
+                    <div style="display:flex; gap: 10px; align-items: center; margin-bottom: 8px;">
+                        <div class="spec-photo-container">
+                            ${spec.photo ? `
+                                <img src="${spec.photo}" alt="${spec.rawName}">
+                            ` : `
+                                <div class="spec-avatar-fallback" style="background-color: var(--color-${roleClass});">${initials}</div>
+                            `}
+                        </div>
+                        <div style="flex: 1; min-width: 0;">
+                            <div class="spec-name" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${spec.rawName}">${spec.rawName}</div>
+                            <div class="spec-role">${spec.role}</div>
+                        </div>
+                        <div style="display:flex; gap: 4px; align-self: flex-start;">
+                            <button class="btn btn-secondary btn-icon spec-card-edit-btn" data-id="${spec.id}" title="Editar Ficha" style="padding: 4px; border-radius: 4px; border:none; background:transparent;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            </button>
+                            <button class="btn btn-secondary btn-icon spec-card-delete-btn" data-id="${spec.id}" title="Eliminar Especialista" style="padding: 4px; border-radius: 4px; border:none; background:transparent; color:#EF4444;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                            </button>
+                        </div>
+                    </div>
+                    ${birthdayHtml}
+                    
+                    ${spec.instagram ? `
+                        <div class="spec-info-row">
+                            <span>IG: <strong>@${spec.instagram}</strong></span>
+                            <button class="spec-copy-btn" data-copy="@${spec.instagram}" title="Copiar Instagram">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            </button>
+                        </div>
+                    ` : ''}
+
+                    ${spec.fed ? `
+                        <div class="spec-info-row">
+                            <span>Matrícula: <strong>${spec.fed}</strong></span>
+                            <button class="spec-copy-btn" data-copy="${spec.fed}" title="Copiar Matrícula">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                            </button>
+                        </div>
+                    ` : ''}
+
+                    ${activitiesHtml}
+                    
+                    ${driveLinkHtml}
+                `;
+
+                // Bind click handlers
+                const warningBadge = card.querySelector(".warning-badge");
+                if (warningBadge) {
+                    warningBadge.addEventListener("click", () => {
+                        openSpecialistModal(spec.id);
+                    });
+                }
+
+                card.querySelector(".spec-card-edit-btn").addEventListener("click", (e) => {
+                    e.stopPropagation();
                     openSpecialistModal(spec.id);
                 });
-            }
 
-            card.querySelector(".spec-card-edit-btn").addEventListener("click", (e) => {
-                e.stopPropagation();
-                openSpecialistModal(spec.id);
-            });
-
-            card.querySelector(".spec-card-delete-btn").addEventListener("click", (e) => {
-                e.stopPropagation();
-                deleteSpecialist(spec.id);
-            });
-
-            card.querySelectorAll(".spec-copy-btn").forEach(btn => {
-                btn.addEventListener("click", () => {
-                    const text = btn.getAttribute("data-copy");
-                    copyToClipboard(text);
-                    showToast(`Copiado: "${text}"`);
+                card.querySelector(".spec-card-delete-btn").addEventListener("click", (e) => {
+                    e.stopPropagation();
+                    deleteSpecialist(spec.id);
                 });
+
+                card.querySelectorAll(".spec-copy-btn").forEach(btn => {
+                    btn.addEventListener("click", () => {
+                        const text = btn.getAttribute("data-copy");
+                        copyToClipboard(text);
+                        showToast(`Copiado: "${text}"`);
+                    });
+                });
+
+                content.appendChild(card);
             });
 
-            specialistsListContainer.appendChild(card);
+            accordionGroup.appendChild(header);
+            accordionGroup.appendChild(content);
+            specialistsListContainer.appendChild(accordionGroup);
         });
     }
 
     // Modal Specialist Operations
     function openSpecialistModal(specId = null) {
         activeSpecId = specId;
+        specPhotoInput.value = "";
         
         if (specId) {
             specialistModalBadge.textContent = "Editar Especialista";
@@ -1738,6 +1875,20 @@ document.addEventListener("DOMContentLoaded", () => {
                 specFedInput.value = spec.fed;
                 specDobInput.value = spec.birthdateVal || "";
                 specDriveInput.value = spec.driveLink || "";
+                
+                if (spec.photo) {
+                    modalActivePhotoBase64 = spec.photo;
+                    specPhotoPreview.src = spec.photo;
+                    specPhotoPreview.style.display = "block";
+                    specPhotoPlaceholder.style.display = "none";
+                    btnRemovePhoto.style.display = "inline-flex";
+                } else {
+                    modalActivePhotoBase64 = null;
+                    specPhotoPreview.src = "";
+                    specPhotoPreview.style.display = "none";
+                    specPhotoPlaceholder.style.display = "block";
+                    btnRemovePhoto.style.display = "none";
+                }
             }
         } else {
             specialistModalBadge.textContent = "Agregar Especialista";
@@ -1747,6 +1898,12 @@ document.addEventListener("DOMContentLoaded", () => {
             specFedInput.value = "";
             specDobInput.value = "";
             specDriveInput.value = "";
+            
+            modalActivePhotoBase64 = null;
+            specPhotoPreview.src = "";
+            specPhotoPreview.style.display = "none";
+            specPhotoPlaceholder.style.display = "block";
+            btnRemovePhoto.style.display = "none";
         }
         
         specialistModal.classList.add("active");
@@ -1791,6 +1948,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 spec.birthdate = birthdayStr;
                 spec.birthdateVal = dobVal;
                 spec.driveLink = driveLinkVal;
+                spec.photo = modalActivePhotoBase64;
             }
             showToast("Especialista actualizado.");
         } else {
@@ -1811,6 +1969,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 birthdate: birthdayStr,
                 birthdateVal: dobVal,
                 driveLink: driveLinkVal,
+                photo: modalActivePhotoBase64,
                 isDefault: false
             });
             showToast("Especialista agregado.");
@@ -2284,6 +2443,28 @@ document.addEventListener("DOMContentLoaded", () => {
         if (specSaveBtn) {
             specSaveBtn.addEventListener("click", saveSpecialist);
         }
+
+        specPhotoInput.addEventListener("change", (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                compressProfileImage(file, (dataUrl) => {
+                    modalActivePhotoBase64 = dataUrl;
+                    specPhotoPreview.src = dataUrl;
+                    specPhotoPreview.style.display = "block";
+                    specPhotoPlaceholder.style.display = "none";
+                    btnRemovePhoto.style.display = "inline-flex";
+                });
+            }
+        });
+
+        btnRemovePhoto.addEventListener("click", () => {
+            modalActivePhotoBase64 = null;
+            specPhotoInput.value = "";
+            specPhotoPreview.src = "";
+            specPhotoPreview.style.display = "none";
+            specPhotoPlaceholder.style.display = "block";
+            btnRemovePhoto.style.display = "none";
+        });
         
         window.addEventListener("click", (e) => {
             if (e.target === detailModal) closeDetailModal();

@@ -501,6 +501,17 @@
                 <span class="modal-area-badge" id="specialist-modal-badge" style="border: none;">Agregar Especialista</span>
             </div>
             <div class="modal-body" style="padding: 24px;">
+                <div style="margin-bottom: 12px; display: flex; align-items: center; gap: 12px; background-color: var(--gris-apoyo); padding: 10px; border-radius: 8px; border: 1px dashed var(--gris-borde);">
+                    <div class="spec-photo-preview-container">
+                        <img id="spec-photo-preview" src="" alt="Vista previa" style="display: none;">
+                        <span id="spec-photo-placeholder">?</span>
+                    </div>
+                    <div style="flex: 1; min-width: 0;">
+                        <label style="font-size: 11px; font-weight: 700; color: var(--gris-texto); display: block; margin-bottom: 4px; text-transform: uppercase;">Foto de Perfil</label>
+                        <input type="file" id="spec-photo-input" accept="image/*" style="font-size: 11px; width: 100%;">
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-remove-photo" style="margin-top: 6px; padding: 2px 6px; font-size: 10px; display: none;">Eliminar foto</button>
+                    </div>
+                </div>
                 <div style="margin-bottom: 12px;">
                     <label for="spec-name-input" style="font-size:12px; font-weight:600; display:block; margin-bottom: 4px;">Nombre Completo:</label>
                     <input type="text" id="spec-name-input" class="form-input" placeholder="Ej: Wilmary Garcia">

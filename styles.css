@@ -1674,3 +1674,126 @@ h1, h2, h3, h4, h5, h6 {
     border-color: var(--verde-salud) !important;
     box-shadow: 0 2px 6px rgba(30, 219, 143, 0.15);
 }
+
+/* ==========================================
+   SPECIALISTS ACCORDION & PROFILE PIC STYLES
+   ========================================== */
+.spec-accordion-group {
+    margin-bottom: 12px;
+    background-color: var(--blanco-base);
+    border: 1px solid var(--gris-borde);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    transition: var(--transition);
+}
+
+.spec-accordion-group:hover {
+    box-shadow: var(--shadow-sm);
+}
+
+.spec-accordion-header {
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background-color: var(--gris-apoyo);
+    border: none;
+    border-bottom: 1px solid var(--gris-borde);
+    cursor: pointer;
+    font-family: 'Poppins', sans-serif;
+    font-size: 12.5px;
+    font-weight: 600;
+    color: var(--negro-confianza);
+    text-align: left;
+    transition: var(--transition);
+    outline: none;
+}
+
+.spec-accordion-header:hover {
+    background-color: #E2E8F0;
+}
+
+.spec-accordion-icon {
+    font-size: 9px;
+    color: var(--gris-suave);
+    transition: transform 0.2s ease;
+}
+
+.spec-accordion-group.open .spec-accordion-icon {
+    transform: rotate(180deg);
+}
+
+.spec-accordion-content {
+    display: none;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+}
+
+.spec-accordion-group.open .spec-accordion-content {
+    display: flex;
+}
+
+/* Profile Photo Preview inside modal */
+.spec-photo-preview-container {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    overflow: hidden;
+    background-color: #E2E8F0;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--blanco-base);
+    box-shadow: var(--shadow-sm);
+    position: relative;
+}
+
+.spec-photo-preview-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+#spec-photo-placeholder {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--gris-suave);
+}
+
+/* Profile Photo inside Specialist Card */
+.spec-photo-container {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    overflow: hidden;
+    background-color: #E2E8F0;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 2px solid var(--blanco-base);
+    box-shadow: var(--shadow-sm);
+}
+
+.spec-photo-container img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.spec-avatar-fallback {
+    width: 100%;
+    height: 100%;
+    border-radius: 50%;
+    color: var(--blanco-base);
+    font-weight: 700;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-transform: uppercase;
+}
+

@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ocupamor - Organizador de Diseños y Publicaciones</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Nunito+Sans:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Poppins:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="styles.css">
+    <!-- SheetJS (Excel Parser) -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="logo-area">
+                <button class="btn btn-secondary btn-icon" id="sidebar-toggle-btn" title="Mostrar/Ocultar barra lateral" style="padding: 6px; border: none; background: transparent; cursor: pointer; color: var(--gris-texto); margin-right: 4px;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+                </button>
+                <img src="Logo Ocupamor Editable.png" alt="Ocupamor Logo" class="brand-logo">
+                <div class="brand-text">
+                    <h1>OCUPAMOR</h1>
+                    <p>Centro de Atención Ocupacional</p>
+                </div>
+            </div>
+            <div class="header-actions">
+                <div class="excel-drop-zone" id="excel-drop-zone">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    <span>Arrastra o <strong>selecciona el Excel</strong></span>
+                    <input type="file" id="excel-input" accept=".xlsx, .xls">
+                </div>
+                <button class="btn btn-secondary btn-icon" id="reset-data-btn" title="Restaurar datos predeterminados">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- DASHBOARD BODY -->
+        <div class="app-body">
+            <!-- SIDEBAR -->
+            <aside class="app-sidebar">
+                <!-- PANEL SELECTOR -->
+                <div class="sidebar-tabs">
+                    <button class="sidebar-tab-btn active" data-sidebar-tab="assets">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+                        Recursos
+                    </button>
+                    <button class="sidebar-tab-btn" data-sidebar-tab="specialists">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+                        Especialistas
+                    </button>
+                </div>
+
+                <!-- SIDEBAR CONTENTS -->
+                <div class="sidebar-content">
+                    <!-- Tab: Assets -->
+                    <div class="sidebar-panel active" id="panel-assets">
+                        <h3>Organización de Recursos</h3>
+                        <p class="panel-desc">Fotos y videos en la carpeta <code>ACTIVOS</code> por profesional:</p>
+                        <div class="asset-tree" id="asset-tree-container">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- Tab: Specialists -->
+                    <div class="sidebar-panel" id="panel-specialists">
+                        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                            <h3 style="margin-bottom:0;">Directorio Clínico</h3>
+                            <button class="btn btn-primary btn-sm" id="btn-add-specialist" style="padding: 4px 8px; font-size: 11px;">
+                                + Agregar
+                            </button>
+                        </div>
+                        <p class="panel-desc">Profesionales de Ocupamor con sus cumpleaños y participaciones:</p>
+                        <div class="specialists-list" id="specialists-list-container">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- MAIN WORKSPACE -->
+            <main class="app-main">
+                <!-- MONTH SELECTOR TABS -->
+                <nav class="month-navbar">
+                    <div class="month-tabs" id="month-tabs-container">
+                        <!-- Month buttons populated by JS -->
+                    </div>
+                </nav>
+
+                <!-- CANVA LINK BANNER -->
+                <div class="canva-banner" id="canva-banner">
+                    <div class="canva-banner-content">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="canva-icon"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                        <span id="canva-banner-text">Proyecto de Canva (Aprobación de Diseños): <strong>No vinculado</strong></span>
+                    </div>
+                    <div class="canva-banner-actions">
+                        <button class="btn btn-secondary btn-sm" id="canva-edit-btn">Vincular Canva</button>
+                        <a href="#" target="_blank" class="btn btn-primary btn-sm" id="canva-open-link" style="display:none">Abrir Canva del Mes</a>
+                    </div>
+                </div>
+
+                <!-- CANVA LINK EDITOR INLINE -->
+                <div class="canva-editor" id="canva-editor" style="display:none">
+                    <input type="url" id="canva-url-input" placeholder="Pega el enlace del proyecto de Canva para este mes...">
+                    <div class="canva-editor-buttons">
+                        <button class="btn btn-primary btn-sm" id="canva-save-btn">Guardar</button>
+                        <button class="btn btn-secondary btn-sm" id="canva-cancel-btn">Cancelar</button>
+                    </div>
+                </div>
+
+                <!-- KPI STATS -->
+                <section class="stats-grid">
+                    <div class="kpi-card" id="kpi-total">
+                        <div class="kpi-info">
+                            <span class="kpi-title">Total Diseños</span>
+                            <span class="kpi-value" id="stat-total">0</span>
+                        </div>
+                        <div class="kpi-icon total">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                        </div>
+                    </div>
+                    <div class="kpi-card" id="kpi-pending">
+                        <div class="kpi-info">
+                            <span class="kpi-title">Pendientes</span>
+                            <span class="kpi-value" id="stat-pending">0</span>
+                        </div>
+                        <div class="kpi-icon pending">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                        </div>
+                    </div>
+                    <div class="kpi-card" id="kpi-progress">
+                        <div class="kpi-info">
+                            <span class="kpi-title">En Diseño / Listo</span>
+                            <span class="kpi-value" id="stat-progress">0</span>
+                        </div>
+                        <div class="kpi-icon progress">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg>
+                        </div>
+                    </div>
+                    <div class="kpi-card" id="kpi-completed">
+                        <div class="kpi-info">
+                            <span class="kpi-title">Aprobados / Publicados</span>
+                            <span class="kpi-value" id="stat-completed">0</span>
+                        </div>
+                        <div class="kpi-icon completed">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- CALENDAR EVENTS & BIRTHDAYS SECTION -->
+                <section class="events-section" id="events-section">
+                    <div class="events-header">
+                        <div class="events-header-title">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="icon"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                            <h3>Fechas Especiales y Efemérides de <span id="events-month-title">JULIO</span></h3>
+                        </div>
+                        <button class="btn btn-secondary btn-sm" id="events-toggle-btn">Ocultar Panel</button>
+                    </div>
+                    <div class="events-content" id="events-content">
+                        <!-- Populated by JS -->
+                    </div>
+                </section>
+
+                <!-- FILTERS & VIEWS TOOLBAR -->
+                <section class="toolbar">
+                    <div class="search-box">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                        <input type="text" id="search-input" placeholder="Buscar por título, temario, profesional...">
+                    </div>
+                    
+                    <div class="filters-group">
+                        <select id="filter-area" class="select-filter">
+                            <option value="">Todas las Áreas</option>
+                            <!-- Populated by JS -->
+                        </select>
+                        <select id="filter-format" class="select-filter">
+                            <option value="">Todos los Formatos</option>
+                            <option value="POST">Solo Posts</option>
+                            <option value="HISTORIA">Solo Historias</option>
+                            <option value="REEL">Solo Reels</option>
+                        </select>
+                        <select id="filter-status" class="select-filter">
+                            <option value="">Todos los Estados</option>
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="En Diseño">En Diseño</option>
+                            <option value="Diseñado">Diseñado</option>
+                            <option value="Aprobado">Aprobado</option>
+                            <option value="Publicado">Publicado</option>
+                        </select>
+                        
+                        <button class="btn btn-primary" id="btn-new-activity">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                            Agregar Diseño
+                        </button>
+                    </div>
+
+                    <div class="view-switchers">
+                        <button class="view-btn active" id="btn-view-grid" title="Vista Cuadrícula">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+                        </button>
+                        <button class="view-btn" id="btn-view-kanban" title="Vista Progreso (Kanban)">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 5v14M19 5v14"/></svg>
+                        </button>
+                        <button class="view-btn" id="btn-view-table" title="Vista Lista Compacta">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="8" y1="6" x2="21" y2="6"></line><line x1="8" y1="12" x2="21" y2="12"></line><line x1="8" y1="18" x2="21" y2="18"></line><line x1="3" y1="6" x2="3.01" y2="6"></line><line x1="3" y1="12" x2="3.01" y2="12"></line><line x1="3" y1="18" x2="3.01" y2="18"></line></svg>
+                        </button>
+                    </div>
+                </section>
+
+                <!-- WORKSPACE VIEWPORTS -->
+                <section class="viewport-container">
+                    <!-- VIEW 1: GRID -->
+                    <div class="viewport-panel active" id="view-grid">
+                        <div class="cards-grid" id="cards-grid-container">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+
+                    <!-- VIEW 2: KANBAN -->
+                    <div class="viewport-panel" id="view-kanban">
+                        <div class="kanban-board">
+                            <!-- Column 1: Pendiente -->
+                            <div class="kanban-col" data-status="Pendiente">
+                                <div class="kanban-col-header border-pending">
+                                    <span class="col-dot dot-pending"></span>
+                                    <h3>Pendientes</h3>
+                                    <span class="kanban-col-count" id="count-pending">0</span>
+                                </div>
+                                <div class="kanban-col-cards" id="kanban-col-pending" ondragover="allowDrop(event)" ondrop="drop(event, 'Pendiente')">
+                                    <!-- Cards dynamically added -->
+                                </div>
+                            </div>
+                            <!-- Column 2: En Diseño -->
+                            <div class="kanban-col" data-status="En Diseño">
+                                <div class="kanban-col-header border-progress">
+                                    <span class="col-dot dot-progress"></span>
+                                    <h3>En Diseño</h3>
+                                    <span class="kanban-col-count" id="count-indesign">0</span>
+                                </div>
+                                <div class="kanban-col-cards" id="kanban-col-indesign" ondragover="allowDrop(event)" ondrop="drop(event, 'En Diseño')">
+                                    <!-- Cards dynamically added -->
+                                </div>
+                            </div>
+                            <!-- Column 3: Diseñado -->
+                            <div class="kanban-col" data-status="Diseñado">
+                                <div class="kanban-col-header border-designed">
+                                    <span class="col-dot dot-designed"></span>
+                                    <h3>Diseñado</h3>
+                                    <span class="kanban-col-count" id="count-designed">0</span>
+                                </div>
+                                <div class="kanban-col-cards" id="kanban-col-designed" ondragover="allowDrop(event)" ondrop="drop(event, 'Diseñado')">
+                                    <!-- Cards dynamically added -->
+                                </div>
+                            </div>
+                            <!-- Column 4: Aprobado -->
+                            <div class="kanban-col" data-status="Aprobado">
+                                <div class="kanban-col-header border-approved">
+                                    <span class="col-dot dot-approved"></span>
+                                    <h3>Aprobados</h3>
+                                    <span class="kanban-col-count" id="count-approved">0</span>
+                                </div>
+                                <div class="kanban-col-cards" id="kanban-col-approved" ondragover="allowDrop(event)" ondrop="drop(event, 'Aprobado')">
+                                    <!-- Cards dynamically added -->
+                                </div>
+                            </div>
+                            <!-- Column 5: Publicado -->
+                            <div class="kanban-col" data-status="Publicado">
+                                <div class="kanban-col-header border-published">
+                                    <span class="col-dot dot-published"></span>
+                                    <h3>Publicados</h3>
+                                    <span class="kanban-col-count" id="count-published">0</span>
+                                </div>
+                                <div class="kanban-col-cards" id="kanban-col-published" ondragover="allowDrop(event)" ondrop="drop(event, 'Publicado')">
+                                    <!-- Cards dynamically added -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- VIEW 3: TABLE -->
+                    <div class="viewport-panel" id="view-table">
+                        <div class="table-container">
+                            <table class="compact-table">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha / Día</th>
+                                        <th>Área</th>
+                                        <th>Título de Publicación</th>
+                                        <th>Formato</th>
+                                        <th>Inversión</th>
+                                        <th>Profesionales</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="table-rows-container">
+                                    <!-- Rows dynamically added -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- EMPTY STATE -->
+                    <div class="empty-state-container" id="empty-state">
+                        <div class="empty-state-illustration">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" class="empty-icon"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+                        </div>
+                        <h3>No hay elementos que coincidan</h3>
+                        <p>Prueba a cambiar tus filtros o busca otro mes de planificación.</p>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <!-- DETAIL / EDITOR MODAL -->
+    <div class="modal-overlay" id="detail-modal">
+        <div class="modal-card">
+            <button class="modal-close-btn" id="modal-close-btn">&times;</button>
+            <div class="modal-header-banner" id="modal-banner">
+                <!-- Colored dynamically -->
+                <span class="modal-area-badge" id="modal-area">TERAPIA OCUPACIONAL</span>
+                
+                <!-- Editable area selector -->
+                <select id="modal-area-input" class="edit-field select-filter" style="display:none; font-size:12px; margin-bottom: 2px;">
+                    <!-- Areas loaded by JS -->
+                </select>
+            </div>
+            
+            <div class="modal-body">
+                <div class="modal-title-row">
+                    <!-- Title -->
+                    <h2 id="modal-title" class="static-field">Título del Diseño</h2>
+                    <input type="text" id="modal-title-input" class="edit-field form-input" style="display:none;" placeholder="Escribe el título de la publicación...">
+                    
+                    <span class="status-badge" id="modal-status">Pendiente</span>
+                </div>
+                
+                <!-- Date & Time -->
+                <p class="modal-date-time static-field" id="modal-datetime">Sábado, 11 de Julio • 8:30 AM - 11:30 AM</p>
+                <div class="edit-field form-datetime-group" style="display:none;">
+                    <div class="form-group-item">
+                        <label for="modal-date-input">Fecha:</label>
+                        <input type="date" id="modal-date-input" class="form-input">
+                    </div>
+                    <div class="form-group-item">
+                        <label for="modal-day-input">Día:</label>
+                        <input type="text" id="modal-day-input" class="form-input" placeholder="LUNES, MARTES, etc.">
+                    </div>
+                    <div class="form-group-item">
+                        <label for="modal-time-start-input">Hora Inicio:</label>
+                        <input type="text" id="modal-time-start-input" class="form-input" placeholder="9:00AM">
+                    </div>
+                    <div class="form-group-item">
+                        <label for="modal-time-end-input">Hora Fin:</label>
+                        <input type="text" id="modal-time-end-input" class="form-input" placeholder="11:30AM">
+                    </div>
+                </div>
+                
+                <hr class="modal-divider">
+
+                <div class="modal-grid">
+                    <!-- Temario -->
+                    <div class="modal-section flex-col-2">
+                        <h4>🧠 Temario y Enfoque</h4>
+                        <p id="modal-temario" class="static-field">Detalles del temario y contenidos de la sesión.</p>
+                        <textarea id="modal-temario-input" class="edit-field form-textarea" style="display:none;" placeholder="Describe los contenidos del post o taller..."></textarea>
+                        
+                        <!-- Enfoque del tema -->
+                        <div class="enfoque-bubble static-field" id="modal-enfoque-container" style="display:none">
+                            <strong>Foco:</strong> <span id="modal-enfoque">World Hepatitis Day</span>
+                        </div>
+                        <div class="edit-field" style="display:none; margin-top:8px;">
+                            <label for="modal-enfoque-input" style="font-size:11px; font-weight:700; color:var(--gris-suave);">ENFOQUE DEL TEMA (Hito/Efeméride):</label>
+                            <input type="text" id="modal-enfoque-input" class="form-input" placeholder="Día del Autismo, Semana de la Lactancia, etc.">
+                        </div>
+                    </div>
+                    
+                    <!-- Brief de Diseño / Diseño Publicidad -->
+                    <div class="modal-section flex-col-2">
+                        <h4>🎨 Brief Creativo (Diseño)</h4>
+                        <div class="brief-box static-field" id="modal-brief">
+                            No se especificó un brief detallado de diseño en la planificación.
+                        </div>
+                        <textarea id="modal-brief-input" class="edit-field form-textarea" style="display:none;" placeholder="Escribe el brief detallado: colores, elementos visuales, textos que debe llevar la imagen..."></textarea>
+                    </div>
+                    
+                    <!-- Lugar & Dirigido a -->
+                    <div class="modal-section">
+                        <h4>📍 Lugar y Dirigido a</h4>
+                        <ul class="modal-info-list static-field">
+                            <li><strong>Lugar:</strong> <span id="modal-lugar">Sede Ocupamor</span></li>
+                            <li><strong>Público:</strong> <span id="modal-dirigida">Niños de 1 a 4 años</span></li>
+                        </ul>
+                        <div class="edit-field" style="display:none;">
+                            <div style="margin-bottom:8px;">
+                                <label for="modal-lugar-input" style="font-size:11px; font-weight:700;">LUGAR:</label>
+                                <input type="text" id="modal-lugar-input" class="form-input" placeholder="Sede Ocupamor, Google Meet, etc.">
+                            </div>
+                            <div>
+                                <label for="modal-dirigida-input" style="font-size:11px; font-weight:700;">DIRIGIDA A:</label>
+                                <input type="text" id="modal-dirigida-input" class="form-input" placeholder="Padres, Docentes, Adolescentes...">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Logística y Costos -->
+                    <div class="modal-section">
+                        <h4>💰 Inversión y Logística</h4>
+                        <ul class="modal-info-list static-field">
+                            <li><strong>Inversión:</strong> <span id="modal-inversion">13$</span></li>
+                            <li><strong>Materiales:</strong> <span id="modal-materiales">Ninguno</span></li>
+                            <li><strong>Refrigerio:</strong> <span id="modal-refrigerio">No</span></li>
+                        </ul>
+                        <div class="edit-field" style="display:none;">
+                            <div style="margin-bottom:6px;">
+                                <label for="modal-inversion-input" style="font-size:11px; font-weight:700;">INVERSION:</label>
+                                <input type="text" id="modal-inversion-input" class="form-input" placeholder="10$, Gratis, etc.">
+                            </div>
+                            <div style="margin-bottom:6px;">
+                                <label for="modal-materiales-input" style="font-size:11px; font-weight:700;">MATERIALES:</label>
+                                <input type="text" id="modal-materiales-input" class="form-input" placeholder="Hojas, aros, etc.">
+                            </div>
+                            <div>
+                                <label for="modal-refrigerio-input" style="font-size:11px; font-weight:700;">REFRIGERIO:</label>
+                                <input type="text" id="modal-refrigerio-input" class="form-input" placeholder="Frutas y agua, no aplica...">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="modal-divider">
+
+                <!-- Specialists & Publish format -->
+                <div class="modal-section">
+                    <h4>🤝 Profesionales y Formato de Publicación</h4>
+                    
+                    <div class="modal-specialists static-field" id="modal-specialists-container">
+                        <!-- Dynamic list with handles -->
+                    </div>
+                    
+                    <div class="edit-field" style="display:none; margin-top:8px;">
+                        <div style="margin-bottom:8px;">
+                            <label for="modal-specs-input" style="font-size:11px; font-weight:700; color:var(--gris-texto);">NOMBRES Y APELLIDOS ESPECIALISTAS:</label>
+                            <input type="text" id="modal-specs-input" class="form-input" placeholder="Escribe los nombres separados por comas...">
+                            <span style="font-size: 10px; color: var(--gris-suave);">Ej: Wilmary Garcia, Betania Hernandez</span>
+                        </div>
+                        <div style="margin-bottom:8px;">
+                            <label for="modal-specs-insta-input" style="font-size:11px; font-weight:700; color:var(--gris-texto);">INSTAGRAM(S) DE ESPECIALISTAS:</label>
+                            <input type="text" id="modal-specs-insta-input" class="form-input" placeholder="Escribe los handles de IG sin @ separados por espacios/comas...">
+                            <span style="font-size: 10px; color: var(--gris-suave);">Ej: Fisioyaisi Fisiocova_</span>
+                        </div>
+                        <div style="margin-bottom:8px;">
+                            <label for="modal-specs-fed-input" style="font-size:11px; font-weight:700; color:var(--gris-texto);">FEDERACION / MATRICULA:</label>
+                            <input type="text" id="modal-specs-fed-input" class="form-input" placeholder="Matrículas correspondientes separated by commas...">
+                        </div>
+                        <div>
+                            <label for="modal-format-input" style="font-size:11px; font-weight:700; color:var(--gris-texto);">FORMATO DE PUBLICACION:</label>
+                            <input type="text" id="modal-format-input" class="form-input" placeholder="POST/HISTORIA, REEL, HISTORIA...">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <div class="status-picker-group">
+                        <label for="modal-status-select">Estado:</label>
+                        <select id="modal-status-select" class="select-filter">
+                            <option value="Pendiente">Pendiente</option>
+                            <option value="En Diseño">En Diseño</option>
+                            <option value="Diseñado">Diseñado</option>
+                            <option value="Aprobado">Aprobado</option>
+                            <option value="Publicado">Publicado</option>
+                        </select>
+                    </div>
+                    
+                    <div class="modal-footer-buttons">
+                        <button class="btn btn-secondary" id="modal-edit-toggle-btn">Editar Ficha</button>
+                        <button class="btn btn-primary" id="modal-save-btn">Guardar Cambios</button>
+                        <button class="btn btn-secondary" id="modal-delete-btn" style="display:none; background-color:#FEE2E2; color:#DC2626; border-color:#FCA5A5;">Eliminar</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- BIRTHDAY SETTING MODAL -->
+    <div class="modal-overlay" id="birthday-modal">
+        <div class="modal-card" style="max-width: 420px;">
+            <button class="modal-close-btn" id="birthday-modal-close-btn">&times;</button>
+            <div class="modal-header-banner" style="background-color: var(--fucsia-emocion); height: 70px; padding: 16px 24px; align-items: center;">
+                <span class="modal-area-badge" style="border: none;">Cumpleaños de Especialista</span>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <h3 id="birthday-spec-name" style="margin-bottom: 12px; font-size:16px;">Nombre Profesional</h3>
+                <p style="font-size:12px; color:var(--gris-suave); margin-bottom: 16px;">Ingresa la fecha de nacimiento del profesional para guardarla localmente y agendar sus publicaciones automáticamente.</p>
+                <div style="margin-bottom: 20px;">
+                    <label for="birthday-date-input" style="font-size:12.5px; font-weight:600; display:block; margin-bottom: 6px;">Fecha de Nacimiento:</label>
+                    <input type="date" id="birthday-date-input" class="form-input" style="width: 100%; padding: 10px; border: 1px solid var(--gris-borde); border-radius: 8px; outline:none;">
+                </div>
+                <div class="modal-footer" style="margin-top: 0; padding-top: 16px; border-top: none; justify-content: flex-end; gap: 8px;">
+                    <button class="btn btn-secondary" id="birthday-cancel-btn">Cancelar</button>
+                    <button class="btn btn-primary" id="birthday-save-btn">Guardar Fecha</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SPECIALIST ADD/EDIT MODAL -->
+    <div class="modal-overlay" id="specialist-modal">
+        <div class="modal-card" style="max-width: 420px;">
+            <button class="modal-close-btn" id="specialist-modal-close-btn">&times;</button>
+            <div class="modal-header-banner" style="background-color: var(--morado-desarrollo); height: 70px; padding: 16px 24px; align-items: center;">
+                <span class="modal-area-badge" id="specialist-modal-badge" style="border: none;">Agregar Especialista</span>
+            </div>
+            <div class="modal-body" style="padding: 24px;">
+                <div style="margin-bottom: 12px;">
+                    <label for="spec-name-input" style="font-size:12px; font-weight:600; display:block; margin-bottom: 4px;">Nombre Completo:</label>
+                    <input type="text" id="spec-name-input" class="form-input" placeholder="Ej: Wilmary Garcia">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label for="spec-role-input" style="font-size:12px; font-weight:600; display:block; margin-bottom: 4px;">Especialidad / Rol:</label>
+                    <select id="spec-role-input" class="select-filter" style="width: 100%; padding: 8px;">
+                        <option value="Terapia Ocupacional">Terapia Ocupacional</option>
+                        <option value="Psicología">Psicología</option>
+                        <option value="Nutrición">Nutrición</option>
+                        <option value="Fisioterapia">Fisioterapia</option>
+                        <option value="Psicopedagogía">Psicopedagogía</option>
+                        <option value="Terapia de Lenguaje">Terapia de Lenguaje</option>
+                        <option value="Club de Actividades">Club de Actividades</option>
+                        <option value="Especialista">Otro / Especialista</option>
+                    </select>
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label for="spec-insta-input" style="font-size:12px; font-weight:600; display:block; margin-bottom: 4px;">Instagram (sin @):</label>
+                    <input type="text" id="spec-insta-input" class="form-input" placeholder="Ej: Fto.wilmarygarcia">
+                </div>
+                <div style="margin-bottom: 12px;">
+                    <label for="spec-fed-input" style="font-size:12px; font-weight:600; display:block; margin-bottom: 4px;">Federación / Matrícula:</label>
+                    <input type="text" id="spec-fed-input" class="form-input" placeholder="Ej: MPPS: 12345">
+                </div>
+                <div style="margin-bottom: 16px;">
+                    <label for="spec-dob-input" style="font-size:12px; font-weight:600; display:block; margin-bottom: 4px;">Fecha de Cumpleaños:</label>
+                    <input type="date" id="spec-dob-input" class="form-input">
+                </div>
+                <div class="modal-footer" style="margin-top: 0; padding-top: 16px; border-top: none; justify-content: flex-end; gap: 8px;">
+                    <button class="btn btn-secondary" id="spec-cancel-btn">Cancelar</button>
+                    <button class="btn btn-primary" id="spec-save-btn">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Access Key Overlay (Security Lock) -->
+    <div class="access-key-overlay" id="access-key-overlay">
+        <div class="access-key-card">
+            <div class="access-key-logo">
+                <img src="Logo Ocupamor Editable.png" alt="Ocupamor Logo">
+            </div>
+            <h2>Acceso Protegido</h2>
+            <p>Por favor, ingresa la clave de acceso de Ocupamor para ingresar al organizador de diseños.</p>
+            <div class="access-key-form" style="display: flex; flex-direction: column; gap: 12px; width: 100%; margin-top: 16px;">
+                <input type="password" id="access-key-input" class="form-input" placeholder="Introduce la contraseña" autocomplete="current-password" style="text-align: center; font-size: 16px; padding: 12px;">
+                <button class="btn btn-primary" id="access-key-submit-btn" style="padding: 12px; font-size: 14px;">Ingresar</button>
+            </div>
+            <p class="access-key-error" id="access-key-error-msg" style="display: none; color: #EF4444; font-size: 12px; margin-top: 12px; font-weight: 600; text-align: center;">⚠️ Clave de acceso incorrecta</p>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">Notificación</div>
+
+    <!-- Firebase SDKs (Compat v9) -->
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+
+    <!-- Data scripts -->
+    <script src="default_data.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>

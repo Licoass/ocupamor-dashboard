@@ -1797,3 +1797,51 @@ h1, h2, h3, h4, h5, h6 {
     text-transform: uppercase;
 }
 
+/* ==========================================
+   FIREBASE CONNECTION STATUS BADGE
+   ========================================== */
+.firebase-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'Poppins', sans-serif;
+    border: 1px solid var(--gris-borde);
+    background-color: var(--gris-apoyo);
+    transition: var(--transition);
+}
+
+.firebase-status-badge.connected {
+    color: #16A34A;
+    background-color: #DCFCE7;
+    border-color: #BBF7D0;
+}
+
+.firebase-status-badge.offline {
+    color: #EA580C;
+    background-color: #FFEDD5;
+    border-color: #FED7AA;
+}
+
+.firebase-status-badge.error {
+    color: #DC2626;
+    background-color: #FEE2E2;
+    border-color: #FECACA;
+}
+
+.status-indicator-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #64748B;
+    display: inline-block;
+}
+
+.connected .status-indicator-dot { background-color: #16A34A; }
+.offline .status-indicator-dot { background-color: #EA580C; }
+.error .status-indicator-dot { background-color: #DC2626; }
+
+

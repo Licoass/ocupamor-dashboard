@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Firebase Firestore Diagnostic</title>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
+    <style>
+        body { font-family: monospace; padding: 20px; background: #1e1e1e; color: #d4d4d4; }
+        pre { background: #252526; padding: 15px; border-radius: 5px; border: 1px solid #3c3c3c; overflow: auto; }
+        h2 { color: #569cd6; }
+    </style>
+</head>
+<body>
+    <h2>Firestore Document Diagnostic</h2>
+    <div id="status">Connecting...</div>
+    <h3>Raw Document Fields:</h3>
+    <pre id="output">Loading...</pre>
+
+    <script>
+        const statusDiv = document.getElementById("status");
+        const outputPre = document.getElementById("output");
+
+        try {
+            firebase.initializeApp(firebaseConfig);
+            const db = firebase.firestore();
+            const docRef = db.collection("ocupamor").doc("dashboard_state");
+
+            docRef.get().then(doc => {
+                if (doc.exists) {
+                    statusDiv.innerHTML = "🟢 Document loaded successfully.";
+                    const data = doc.data();
+                    
+                    // Format output
+                    const displayData = {
+                        hasSpecialistsDirectory: !!data.specialistsDirectory,
+                        specialistsCount: data.specialistsDirectory ? data.specialistsDirectory.length : 0,
+                        specialists: data.specialistsDirectory ? data.specialistsDirectory.map(s => ({
+                            id: s.id,
+                            rawName: s.rawName,
+                            role: s.role,
+                            hasPhoto: !!s.photo,
+                            photoLength: s.photo ? s.photo.length : 0
+                        })) : null,
+                        hasPlanningData: !!data.planningData,
+                        hasCanvaLinks: !!data.canvaLinks,
+                        canvaLinks: data.canvaLinks,
+                        lastUpdated: data.lastUpdated
+                    };
+
+                    outputPre.textContent = JSON.stringify(displayData, null, 4);
+                } else {
+                    statusDiv.innerHTML = "🔴 Document does not exist in Firestore.";
+                    outputPre.textContent = "No document found at ocupamor/dashboard_state";
+                }
+            }).catch(err => {
+                statusDiv.innerHTML = "🔴 Error getting document: " + err.message;
+                outputPre.textContent = err.stack;
+            });
+        } catch (e) {
+            statusDiv.innerHTML = "🔴 Initialization Error: " + e.message;
+            outputPre.textContent = e.stack;
+        }
+    </script>
+</body>
+</html>

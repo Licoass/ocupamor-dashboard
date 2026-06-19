@@ -164,6 +164,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Toast
     const toast = document.getElementById("toast");
+    const firebaseStatusBadge = document.getElementById("firebase-status-badge");
+    const statusIndicatorText = document.getElementById("status-indicator-text");
 
     // Firebase & Security Lock Screen Elements
     let db = null;
@@ -274,6 +276,12 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
 
+    function updateFirebaseStatusBadge(status, text) {
+        if (!firebaseStatusBadge || !statusIndicatorText) return;
+        firebaseStatusBadge.className = "firebase-status-badge " + status;
+        statusIndicatorText.textContent = text;
+    }
+
     function initializeFirebaseSync() {
         if (typeof firebase !== "undefined" && typeof firebaseConfig !== "undefined" && firebaseConfig.apiKey !== "REEMPLAZAR_CON_TU_API_KEY") {
             try {
@@ -282,12 +290,15 @@ document.addEventListener("DOMContentLoaded", () => {
                 }
                 db = firebase.firestore();
                 stateRef = db.collection("ocupamor").doc("dashboard_state");
+                updateFirebaseStatusBadge("offline", "Conectando...");
                 setupRealtimeListeners();
             } catch (err) {
                 console.error("Error al inicializar Firebase Sync:", err);
+                updateFirebaseStatusBadge("error", "Error Firestore");
             }
         } else {
             console.log("Firebase no configurado o no cargado. Funcionando en modo local (localStorage).");
+            updateFirebaseStatusBadge("offline", "Modo Local");
         }
     }
 
@@ -295,8 +306,19 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!stateRef) return;
 
         stateRef.onSnapshot(doc => {
+            updateFirebaseStatusBadge("connected", "Sincronizado");
+
             if (doc.exists) {
                 const data = doc.data();
+                
+                // Safe check: do not pull if client has newer local unsynced edits
+                const hasUnsynced = localStorage.getItem("ocupamor_has_unsynced_changes") === "true";
+                if (hasUnsynced) {
+                    console.log("Detectados cambios locales sin sincronizar. Subiendo a Firebase...");
+                    uploadLocalStateToFirebase();
+                    return;
+                }
+                
                 const cloudTimestamp = data.lastUpdated ? (data.lastUpdated.toMillis ? data.lastUpdated.toMillis() : (data.lastUpdated.seconds ? data.lastUpdated.seconds * 1000 : 0)) : 0;
                 const localTimestamp = parseInt(localStorage.getItem("ocupamor_last_sync_timestamp") || "0", 10);
                 
@@ -344,11 +366,19 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         }, err => {
             console.warn("Fallo al conectar con Firestore (usando reglas de prueba o sin internet):", err);
+            updateFirebaseStatusBadge("error", "Error de Permisos");
+            if (err.code === "permission-denied") {
+                showToast("⚠️ Firebase Firestore bloqueado. Revisa las reglas de seguridad.");
+                console.log("%c⚠️ OCUPAMOR FIREBASE INSTRUCTIONS:\n1. Ve a Firebase Console > Firestore Database > Reglas.\n2. Cámbialas por:\n\nrules_version = '2';\nservice cloud.firestore {\n  match /databases/{database}/documents {\n    match /{document=**} {\n      allow read, write: if true;\n    }\n  }\n}", "color: red; font-weight: bold; font-size: 14px;");
+            }
         });
     }
 
     function uploadLocalStateToFirebase() {
         if (!stateRef) return;
+
+        localStorage.setItem("ocupamor_has_unsynced_changes", "true");
+        updateFirebaseStatusBadge("offline", "Sincronizando...");
 
         const canvaLinks = {};
         monthOrder.forEach(month => {
@@ -369,8 +399,12 @@ document.addEventListener("DOMContentLoaded", () => {
             lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
         }).then(() => {
             console.log("Estado sincronizado con Firebase.");
+            localStorage.setItem("ocupamor_has_unsynced_changes", "false");
+            updateFirebaseStatusBadge("connected", "Sincronizado");
         }).catch(err => {
             console.error("Error al escribir en Firebase Firestore:", err);
+            updateFirebaseStatusBadge("error", "Error de Sincronización");
+            showToast("⚠️ Error al sincronizar datos en la nube.");
         });
     }
 
@@ -2478,6 +2512,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (birthdayModal.classList.contains("active")) closeBirthdayModal();
                 if (specialistModal.classList.contains("active")) closeSpecialistModal();
             }
+        });
+
+        window.addEventListener("online", () => {
+            console.log("Internet detectado. Sincronizando con Firestore...");
+            if (stateRef) {
+                uploadLocalStateToFirebase();
+            }
+        });
+
+        window.addEventListener("offline", () => {
+            console.warn("Conexión perdida. Funcionando en Modo Local.");
+            updateFirebaseStatusBadge("offline", "Modo Local");
         });
     }
 

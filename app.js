@@ -241,7 +241,7 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
         if (migrated) {
-            saveSpecialistsDirectory();
+            localStorage.setItem("ocupamor_specialists_directory", JSON.stringify(specialistsDirectory));
         }
         
         buildMonthTabs();
@@ -309,6 +309,12 @@ document.addEventListener("DOMContentLoaded", () => {
             updateFirebaseStatusBadge("connected", "Sincronizado");
 
             if (doc.exists) {
+                // Evitar bucle infinito si la actualización es local (compensación de latencia)
+                if (doc.metadata && doc.metadata.hasPendingWrites) {
+                    console.log("Ignorando snapshot con cambios locales pendientes (compensación de latencia).");
+                    return;
+                }
+
                 const data = doc.data();
                 
                 // Safe check: do not pull if client has newer local unsynced edits
@@ -377,7 +383,7 @@ document.addEventListener("DOMContentLoaded", () => {
     function uploadLocalStateToFirebase() {
         if (!stateRef) return;
 
-        localStorage.setItem("ocupamor_has_unsynced_changes", "true");
+        localStorage.setItem("ocupamor_has_unsynced_changes", "false");
         updateFirebaseStatusBadge("offline", "Sincronizando...");
 
         const canvaLinks = {};
@@ -403,6 +409,7 @@ document.addEventListener("DOMContentLoaded", () => {
             updateFirebaseStatusBadge("connected", "Sincronizado");
         }).catch(err => {
             console.error("Error al escribir en Firebase Firestore:", err);
+            localStorage.setItem("ocupamor_has_unsynced_changes", "true");
             updateFirebaseStatusBadge("error", "Error de Sincronización");
             showToast("⚠️ Error al sincronizar datos en la nube.");
         });
@@ -1690,7 +1697,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         specialistsDirectory = Array.from(specMap.values());
-        saveSpecialistsDirectory();
+        localStorage.setItem("ocupamor_specialists_directory", JSON.stringify(specialistsDirectory));
     }
 
     function saveSpecialistsDirectory() {

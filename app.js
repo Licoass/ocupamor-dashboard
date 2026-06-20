@@ -317,15 +317,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
                 const data = doc.data();
                 
-                // Safe check: do not pull if client has newer local unsynced edits
-                const hasUnsynced = localStorage.getItem("ocupamor_has_unsynced_changes") === "true";
-                if (hasUnsynced) {
-                    console.log("Detectados cambios locales sin sincronizar. Subiendo a Firebase...");
-                    uploadLocalStateToFirebase();
-                    return;
+                let cloudTimestamp = 0;
+                if (data.lastUpdated) {
+                    if (typeof data.lastUpdated === "number") {
+                        cloudTimestamp = data.lastUpdated;
+                    } else if (data.lastUpdated.toMillis) {
+                        cloudTimestamp = data.lastUpdated.toMillis();
+                    } else if (data.lastUpdated.seconds) {
+                        cloudTimestamp = data.lastUpdated.seconds * 1000;
+                    }
                 }
-                
-                const cloudTimestamp = data.lastUpdated ? (data.lastUpdated.toMillis ? data.lastUpdated.toMillis() : (data.lastUpdated.seconds ? data.lastUpdated.seconds * 1000 : 0)) : 0;
                 const localTimestamp = parseInt(localStorage.getItem("ocupamor_last_sync_timestamp") || "0", 10);
                 
                 if (cloudTimestamp > localTimestamp) {
@@ -366,6 +367,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     buildAreaFilters();
                     buildSpecialistsDirectory();
                     updateActiveMonthView();
+                } else if (localTimestamp > cloudTimestamp) {
+                    console.log("Detectados cambios locales más recientes que la nube. Subiendo a Firebase...");
+                    uploadLocalStateToFirebase();
                 }
             } else {
                 uploadLocalStateToFirebase();
@@ -383,7 +387,6 @@ document.addEventListener("DOMContentLoaded", () => {
     function uploadLocalStateToFirebase() {
         if (!stateRef) return;
 
-        localStorage.setItem("ocupamor_has_unsynced_changes", "false");
         updateFirebaseStatusBadge("offline", "Sincronizando...");
 
         const canvaLinks = {};
@@ -402,14 +405,12 @@ document.addEventListener("DOMContentLoaded", () => {
             customActivities: customActivities,
             specialistsDirectory: specialistsDirectory,
             canvaLinks: canvaLinks,
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+            lastUpdated: newTimestamp
         }).then(() => {
             console.log("Estado sincronizado con Firebase.");
-            localStorage.setItem("ocupamor_has_unsynced_changes", "false");
             updateFirebaseStatusBadge("connected", "Sincronizado");
         }).catch(err => {
             console.error("Error al escribir en Firebase Firestore:", err);
-            localStorage.setItem("ocupamor_has_unsynced_changes", "true");
             updateFirebaseStatusBadge("error", "Error de Sincronización");
             showToast("⚠️ Error al sincronizar datos en la nube.");
         });
